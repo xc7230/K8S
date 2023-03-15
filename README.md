@@ -86,24 +86,26 @@ systemctl restart containerd
 ```
 
 
-### K8S Master 설정
+
+### K8S Master 쿠버네티스 서버 실행
 ```shell
 ##
 kubeadm init
 kubeadm reset
 kubeadm init --pod-network-cidr=10.244.0.0/16 ## 여기서 나온 코드는 노드들 연결할때 쓴다.
+```
 
-
-kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/v0.20.2/Documentation/kube-flannel.yml
+### CNI 플러그인 Flannel 설치(k8s-master)
+Flannel은 쿠버네티스 내부에서 Pod간 통신을 위한 CNI 플러그인중 하나다. 다른 플러그인으로는 Calico가 있다.<br/>
+```shell
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/v0.20.2/Documentation/kube-flannel.yml
-kubectl get nodes
 ```
 
 
-### K8S Node 설정
+### K8S Node 연결
 ```shell
 ## Master에서 init해서 나온 코드
 kubeadm join 10.0.0.6:6443 --token 4571bz.53gjbwsqoorgp0vl         --discovery-token-ca-cert-hash sha256:c904395cc6ffc08f499c78f03e9c5399e17707982192f2cd9687607dc02e1ee9
@@ -115,12 +117,45 @@ kubeadm join 10.0.0.6:6443 --token 4571bz.53gjbwsqoorgp0vl         --discovery-t
 kubectl get nodes # k8s-node01이 Ready 상태면 성공
 ```
 
+### K8S 대시보드 설치
+
 ```shell
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
+wget https://raw.githubusercontent.com/kubernetes/dashboard/v2.6.1/aio/deploy/recommended.yaml # 버전 확인해준다.
+vi recommended.yaml
+
+# type: NodePort 추가
+
+kubectl apply -f recommended.yaml
+kubectl get services -n kubernetes-dashboard
+ufw disable
+```
+
+### K8S 대시보드 토큰 생성
+```shell
+cat <<EOF | kubectl create -f -
+ apiVersion: v1
+ kind: ServiceAccount
+ metadata:
+   name: admin-user
+   namespace: kube-system
 EOF
 
-sudo modprobe overlay
-sudo modprobe br_netfilter
+cat <<EOF | kubectl create -f -
+ apiVersion: rbac.authorization.k8s.io/v1
+ kind: ClusterRoleBinding
+ metadata:
+   name: admin-user
+ roleRef:
+   apiGroup: rbac.authorization.k8s.io
+   kind: ClusterRole
+   name: cluster-admin
+ subjects:
+ - kind: ServiceAccount
+   name: admin-user
+   namespace: kube-system
+EOF
+
+kubectl -n kube-system create token admin-user  # 나온 토큰번호 저장
 ```
+
+
