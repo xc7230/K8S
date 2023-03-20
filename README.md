@@ -17,7 +17,9 @@ k8s 최소 사양 2c 2g
 apt-get update
 apt-get install     ca-certificates     curl     gnupg     lsb-release
 mkdir -m 0755 -p /etc/apt/keyrings
+
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
 echo   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
@@ -80,8 +82,14 @@ systemctl enable docker
 systemctl daemon-reload
 systemctl restart docker
 
-## 
+## 설정 변경
 vi /etc/containerd/config.toml
+```
+![image](./images/k8s/1.png)<br/>
+
+
+```shell
+## 재시작
 systemctl restart containerd
 ```
 
@@ -94,6 +102,7 @@ kubeadm init
 kubeadm reset
 kubeadm init --pod-network-cidr=10.244.0.0/16 ## 여기서 나온 코드는 노드들 연결할때 쓴다.
 ```
+![image](./images/k8s/2.png)<br/>
 
 ### CNI 플러그인 Flannel 설치(k8s-master)
 Flannel은 쿠버네티스 내부에서 Pod간 통신을 위한 CNI 플러그인중 하나다. 다른 플러그인으로는 Calico가 있다.<br/>
@@ -110,14 +119,15 @@ kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/v0.20.2/Do
 ## Master에서 init해서 나온 코드
 kubeadm join 10.0.0.6:6443 --token 4571bz.53gjbwsqoorgp0vl         --discovery-token-ca-cert-hash sha256:c904395cc6ffc08f499c78f03e9c5399e17707982192f2cd9687607dc02e1ee9
 ```
-
+![image](./images/k8s/4.png)<br/>
 
 ### K8S Master 와 Node 연결 확인
 ```shell
 kubectl get nodes # k8s-node01이 Ready 상태면 성공
 ```
+![image](./images/k8s/3.png)<br/>
 
-### K8S 대시보드 설치
+## K8S 대시보드 설치
 
 ```shell
 wget https://raw.githubusercontent.com/kubernetes/dashboard/v2.6.1/aio/deploy/recommended.yaml # 버전 확인해준다.
@@ -129,6 +139,8 @@ kubectl apply -f recommended.yaml
 kubectl get services -n kubernetes-dashboard
 ufw disable
 ```
+![image](./images/k8s/5.png)<br/>
+
 
 ### K8S 대시보드 토큰 생성
 ```shell
@@ -157,5 +169,18 @@ EOF
 
 kubectl -n kube-system create token admin-user  # 나온 토큰번호 저장
 ```
+![image](./images/k8s/6.png)<br/>
+
+### 대시보드 접속
+```shell
+### 대시보드 포트번호 확인
+kubectl get services -n kubernetes-dashboard
+```
+![image](./images/k8s/9.png)<br/>
+
+url 예시 : https://20.249.73.102:30050<br/>
+다음과 같이 쿠버네티스 서버 IP:포트로 접속한다. 토큰 번호를 넣어주면 접속 가능하다.<br/>
+![image](./images/k8s/7.png)<br/>
+![image](./images/k8s/8.png)<br/>
 
 
